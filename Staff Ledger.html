@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Staff Ledger</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📒%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600&family=Source+Serif+4:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1ef;--card:#fff;--ink:#14302b;--mute:#5d6f6a;--line:#d3dbd8;--btn:#14302b;--on:#fff;--brass:#9a7326;--bad:#a3322b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1917;--card:#17241f;--ink:#e6efeb;--mute:#93a69f;--line:#2a3a35;--btn:#d8b25a;--on:#14302b;--brass:#d8b25a;--bad:#e8837b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1917;--card:#17241f;--ink:#e6efeb;--mute:#93a69f;--line:#2a3a35;--btn:#d8b25a;--on:#14302b;--brass:#d8b25a;--bad:#e8837b;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.45 "Public Sans",system-ui,sans-serif}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+h1,h2,.name{font-family:"Source Serif 4",Georgia,serif}
+h1{font-size:26px;margin:0}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.sub{color:var(--mute);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{background:var(--btn);color:var(--on);border:0;border-radius:6px;padding:9px 14px;font-weight:600}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn.bad{color:var(--bad)}
+input,select,textarea{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:9px 11px;width:100%}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding:8px 0;z-index:5;display:grid;grid-template-columns:1fr auto;gap:8px}
+.bar label{font-size:13px;color:var(--mute);display:flex;gap:6px;align-items:center;grid-column:1/-1}
+.bar label input{width:auto}
+.bar select{width:auto}
+.card{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--brass);border-radius:6px;padding:12px;margin:10px 0;display:grid;grid-template-columns:64px 1fr;gap:12px}
+.ph{width:64px;height:64px;border-radius:6px;object-fit:cover;background:var(--line);display:grid;place-items:center;font:700 20px "Source Serif 4",serif;color:var(--mute)}
+.eid{font-size:12px;color:var(--brass);font-weight:600;font-variant-numeric:tabular-nums}
+.name{font-size:18px;font-weight:700;margin:0}
+.des{color:var(--mute);font-size:14px}
+.meta{margin:6px 0;font-size:14px;word-break:break-word}
+.card .row{grid-column:1/-1}
+.empty{text-align:center;color:var(--mute);padding:40px 12px}
+#lock{min-height:100vh;display:grid;place-items:center;padding:16px}
+#lf{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:22px;width:100%;max-width:360px;display:grid;gap:10px}
+.err{color:var(--bad);font-size:13px;min-height:18px}
+dialog{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:18px;width:min(520px,94vw);max-height:90vh}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h2{margin:0 0 10px;font-size:20px}
+.f{display:grid;gap:4px;margin-bottom:10px;font-size:13px;color:var(--mute)}
+textarea{min-height:90px;font:12px/1.3 ui-monospace,monospace;word-break:break-all}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--btn);color:var(--on);padding:10px 14px;border-radius:6px;max-width:92vw;font-size:14px;z-index:20}
+</style></head><body>
+
+<div id="lock" hidden>
+  <form id="lf">
+    <h1>Staff Ledger</h1>
+    <div class="sub" id="lt"></div>
+    <input id="lp" type="password" placeholder="Passphrase" autocomplete="current-password">
+    <input id="lc" type="password" placeholder="Repeat passphrase" autocomplete="new-password">
+    <div class="err" id="le" role="alert"></div>
+    <button class="btn" id="lb">Unlock</button>
+    <div class="sub">The directory is encrypted on this device. There is no recovery if the passphrase is lost, so keep the USB backup.</div>
+  </form>
+</div>
+
+<div id="app" class="wrap" hidden>
+  <header>
+    <div><h1>Staff Ledger</h1><div class="sub" id="count"></div></div>
+    <div class="row">
+      <button class="btn" id="add">Add employee</button>
+      <button class="btn ghost" id="bk">Backup</button>
+      <button class="btn ghost" id="lk">Lock</button>
+    </div>
+  </header>
+  <div class="bar">
+    <input id="q" type="search" placeholder="Search name, ID, phone or designation" aria-label="Search">
+    <select id="sort" aria-label="Sort"><option value="name">A to Z</option><option value="id">By ID</option></select>
+    <label><input type="checkbox" id="arch"> Show archived employees</label>
+  </div>
+  <div id="list"></div>
+</div>
+
+<dialog id="ed"><form id="ef" method="dialog">
+  <h2 id="et">Add employee</h2>
+  <div class="f">Employee ID<input name="id" required maxlength="20"></div>
+  <div class="f">Full name<input name="name" required maxlength="80"></div>
+  <div class="f">Designation<input name="des" required maxlength="80"></div>
+  <div class="f">Residential address<input name="addr" required maxlength="200"></div>
+  <div class="f">Phone number<input name="phone" type="tel" required maxlength="25"></div>
+  <div class="f">Private cloud profile link (https)<input name="link" type="url" placeholder="https://"></div>
+  <div class="f">Profile photograph<input id="pf" type="file" accept="image/*"></div>
+  <div class="err" id="ee" role="alert"></div>
+  <div class="row"><button class="btn">Save employee</button><button type="button" class="btn ghost" data-close>Cancel</button></div>
+</form></dialog>
+
+<dialog id="bd">
+  <h2>Backup and restore</h2>
+  <div class="sub" id="binfo"></div>
+  <p class="sub">A backup holds only the directory: ID, name, photo, designation, address, phone and cloud link. It is encrypted with its own password.</p>
+  <div class="f">Backup password (10+ characters)<input id="bp" type="password" autocomplete="new-password"></div>
+  <div class="row"><button class="btn" id="bx">Create backup</button><button class="btn ghost" id="bdl" hidden>Download file</button><button class="btn ghost" id="bcp" hidden>Copy text</button></div>
+  <textarea id="bo" readonly hidden aria-label="Encrypted backup text"></textarea>
+  <hr>
+  <div class="f">Restore from a backup file<input id="rf" type="file" accept=".json,.slbackup,text/plain"></div>
+  <textarea id="ri" placeholder="Or paste backup text here" aria-label="Backup text to restore"></textarea>
+  <div class="sub" id="rinfo"></div>
+  <div class="f">Password for that backup<input id="rp" type="password" autocomplete="off"></div>
+  <div class="err" id="be" role="alert"></div>
+  <div class="row"><button class="btn bad ghost" id="rx">Replace directory with backup</button><button class="btn ghost" data-close>Close</button></div>
+</dialog>
+
+<div id="toast" hidden></div>
+
+<script>
+const $=s=>document.querySelector(s),enc=new TextEncoder(),dec=new TextDecoder();
+const b64=u=>{let s='';u.forEach(c=>s+=String.fromCharCode(c));return btoa(s)};
+const unb=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function mk(pw,salt){const k=await crypto.subtle.importKey('raw',enc.encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function seal(o,k){const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,enc.encode(JSON.stringify(o)));return{iv:b64(iv),data:b64(new Uint8Array(ct))}}
+async function unseal(p,k){return JSON.parse(dec.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb(p.iv)},k,unb(p.data))))}
+const LS='sl_vault';
+const lg=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const ls=(k,v)=>{try{localStorage.setItem(k,v);return true}catch(e){return false}};
+let db,KEY,SALT,editing=null,photo,idle,bakText='';
+
+function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,3500)}
+async function save(){const p=await seal(db,KEY);if(!ls(LS,JSON.stringify({salt:b64(SALT),...p})))toast('Could not save. Browser storage is unavailable.')}
+
+function showLock(){const has=!!lg(LS);$('#lock').hidden=false;$('#app').hidden=true;$('#lt').textContent=has?'Enter your passphrase to open the directory.':'Create a passphrase to encrypt the directory.';$('#lc').hidden=has;$('#lb').textContent=has?'Unlock':'Create and open';$('#lp').value='';$('#lc').value='';$('#le').textContent=''}
+$('#lf').onsubmit=async ev=>{ev.preventDefault();const pw=$('#lp').value,has=!!lg(LS),e=$('#le');e.textContent='';
+  try{
+    if(!has){
+      if(pw.length<10){e.textContent='Use at least 10 characters.';return}
+      if(pw!==$('#lc').value){e.textContent='The two passphrases differ.';return}
+      SALT=crypto.getRandomValues(new Uint8Array(16));KEY=await mk(pw,SALT);db={emps:[],bk:{n:0,last:null}};await save();
+    }else{const v=JSON.parse(lg(LS));SALT=unb(v.salt);KEY=await mk(pw,SALT);db=await unseal(v,KEY)}
+    enter();
+  }catch(x){e.textContent='Wrong passphrase.'}};
+function enter(){$('#lock').hidden=true;$('#app').hidden=false;render();bump()}
+function lockNow(){db=null;KEY=null;document.querySelectorAll('dialog[open]').forEach(d=>d.close());showLock()}
+function bump(){clearTimeout(idle);idle=setTimeout(()=>{if(db)lockNow()},600000)}
+['click','keydown','touchstart'].forEach(e=>addEventListener(e,()=>{if(db)bump()}));
+$('#lk').onclick=lockNow;
+
+function render(){
+  const q=$('#q').value.trim().toLowerCase(),arch=$('#arch').checked,so=$('#sort').value;
+  const act=db.emps.filter(e=>!e.archived).length,ar=db.emps.length-act;
+  $('#count').textContent=`${act} employee${act===1?'':'s'}`+(ar?`, ${ar} archived`:'');
+  const a=db.emps.filter(e=>!!e.archived===arch&&(!q||[e.id,e.name,e.phone,e.des].some(x=>String(x).toLowerCase().includes(q))));
+  a.sort((x,y)=>so==='id'?x.id.localeCompare(y.id,undefined,{numeric:true}):x.name.localeCompare(y.name));
+  $('#list').innerHTML=a.length?a.map(e=>`<article class="card" data-id="${esc(e.id)}">
+    ${e.photo?`<img class="ph" src="${e.photo}" alt="Photo of ${esc(e.name)}">`:`<div class="ph" aria-hidden="true">${esc(e.name.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase())}</div>`}
+    <div><div class="eid">${esc(e.id)}</div><h2 class="name">${esc(e.name)}</h2><div class="des">${esc(e.des)}</div>
+    <div class="meta">${esc(e.addr)}<br>${esc(e.phone)}</div></div>
+    <div class="row">${e.archived?`<button class="btn sm ghost" data-a="restore">Restore</button><button class="btn sm ghost bad" data-a="del">Delete permanently</button>`:`<button class="btn sm" data-a="more">More details</button><button class="btn sm ghost" data-a="edit">Edit</button><button class="btn sm ghost" data-a="archive">Archive</button>`}</div>
+  </article>`).join(''):`<div class="empty">${db.emps.length?'No employees match.':'No employees yet. Add the first one to start the directory.'}</div>`;
+}
+['q','sort','arch'].forEach(i=>$('#'+i).oninput=render);
+
+$('#list').onclick=async ev=>{const b=ev.target.closest('[data-a]');if(!b)return;const e=db.emps.find(x=>x.id===b.closest('.card').dataset.id);if(!e)return;const a=b.dataset.a;
+  if(a==='more'){
+    if(!e.link)return toast('No cloud link saved yet. Use Edit to add this employee’s private profile link.');
+    if(!navigator.onLine)return toast('Detailed profiles are kept in private cloud storage and need an internet connection.');
+    window.open(e.link,'_blank','noopener');
+  }else if(a==='edit')openEd(e);
+  else if(a==='archive'||a==='restore'){e.archived=a==='archive';await save();render();toast(a==='archive'?'Archived.':'Restored.')}
+  else if(a==='del'){if(b.dataset.s){db.emps=db.emps.filter(x=>x!==e);await save();render();toast('Deleted.')}else{b.dataset.s=1;b.textContent='Tap again to confirm';setTimeout(()=>{b.dataset.s='';b.textContent='Delete permanently'},3000)}}
+};
+
+function nextId(){const n=db.emps.map(e=>parseInt((e.id.match(/\d+$/)||[0])[0],10)).reduce((m,x)=>Math.max(m,x),0)+1;return 'EMP-'+String(n).padStart(3,'0')}
+function openEd(e){editing=e||null;photo=undefined;const f=$('#ef');f.reset();$('#ee').textContent='';$('#et').textContent=e?'Edit employee':'Add employee';
+  f.id.value=e?e.id:nextId();f.name.value=e?e.name:'';f.des.value=e?e.des:'';f.addr.value=e?e.addr:'';f.phone.value=e?e.phone:'';f.link.value=e?e.link||'':'';$('#ed').showModal()}
+$('#add').onclick=()=>openEd();
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+$('#pf').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;try{photo=await resize(f)}catch(x){$('#ee').textContent='That file is not a readable image.'}};
+function resize(file){return new Promise((res,rej)=>{const i=new Image,u=URL.createObjectURL(file);i.onload=()=>{const r=Math.min(1,240/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*r);c.height=Math.round(i.height*r);c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',.8))};i.onerror=rej;i.src=u})}
+$('#ef').onsubmit=async ev=>{ev.preventDefault();const f=ev.target,er=$('#ee');
+  const o={id:f.id.value.trim().toUpperCase(),name:f.name.value.trim(),des:f.des.value.trim(),addr:f.addr.value.trim(),phone:f.phone.value.trim(),link:f.link.value.trim()};
+  if(!/^[A-Z0-9][A-Z0-9-]{1,19}$/.test(o.id))return er.textContent='Employee ID may use letters, numbers and hyphens.';
+  if(db.emps.some(x=>x.id===o.id&&x!==editing))return er.textContent='That employee ID is already in use.';
+  if(!/^\+?[\d\s\-()]{7,20}$/.test(o.phone))return er.textContent='Enter a valid phone number.';
+  if(o.link&&!/^https:\/\//i.test(o.link))return er.textContent='The cloud link must start with https://';
+  if(editing){Object.assign(editing,o);if(photo)editing.photo=photo}else db.emps.push({...o,photo:photo||'',archived:false});
+  await save();$('#ed').close();render();toast('Saved.')};
+
+function binfo(){const b=db.bk;$('#binfo').textContent=b.last?`Last backup: version ${b.n}, ${new Date(b.last).toLocaleString()}`:'No backup made yet.'}
+$('#bk').onclick=()=>{binfo();$('#be').textContent='';$('#bo').hidden=$('#bdl').hidden=$('#bcp').hidden=true;$('#bd').showModal()};
+$('#bx').onclick=async()=>{const pw=$('#bp').value,e=$('#be');e.textContent='';
+  if(pw.length<10)return e.textContent='The backup password needs at least 10 characters.';
+  const salt=crypto.getRandomValues(new Uint8Array(16)),k=await mk(pw,salt),n=db.bk.n+1,created=new Date().toISOString();
+  const p=await seal({emps:db.emps},k);
+  bakText=JSON.stringify({app:'staff-ledger',format:1,backupVersion:n,created,count:db.emps.length,salt:b64(salt),...p});
+  db.bk={n,last:created};await save();binfo();$('#bo').value=bakText;$('#bo').hidden=$('#bdl').hidden=$('#bcp').hidden=false;toast('Backup ready. Save it to your USB drive.')};
+$('#bdl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bakText],{type:'application/json'}));a.download=`staff-ledger-v${db.bk.n}.slbackup`;a.click();toast('If nothing downloads, use Copy text and paste it into a file on the USB drive.')};
+$('#bcp').onclick=async()=>{try{await navigator.clipboard.writeText(bakText);toast('Copied.')}catch(x){$('#bo').select();toast('Select all and copy the text.')}};
+function peek(){try{const j=JSON.parse($('#ri').value);$('#rinfo').textContent=`Backup version ${j.backupVersion}, ${new Date(j.created).toLocaleString()}, ${j.count} employees`}catch(x){$('#rinfo').textContent=''}}
+$('#ri').oninput=peek;
+$('#rf').onchange=async ev=>{const f=ev.target.files[0];if(f){$('#ri').value=await f.text();peek()}};
+$('#rx').onclick=async()=>{const e=$('#be');e.textContent='';
+  try{const j=JSON.parse($('#ri').value);if(j.app!=='staff-ledger')throw 0;const d=await unseal(j,await mk($('#rp').value,unb(j.salt)));
+    if(!Array.isArray(d.emps))throw 0;db.emps=d.emps;await save();render();$('#bd').close();toast(`Restored ${d.emps.length} employees.`)}
+  catch(x){e.textContent='Could not restore. Check the backup text and its password.'}};
+showLock();
+</script>
+</body></html>
